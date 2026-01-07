@@ -3,3 +3,11 @@ build
 .git
 
 *.so
+
+*pycache*
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+
+agent.md

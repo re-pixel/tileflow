@@ -44,7 +44,7 @@ class HardwareConstraintValidator:
 		assert op.output is not None, "Graph should set op.output when op is added"
 		a, b = op.inputs
 		m, k = a.shape
-		_k2, n = b.shape
+		_, n = b.shape
 
 		m_pad, dm = _pad_to_multiple(m, self.tile_m)
 		n_pad, dn = _pad_to_multiple(n, self.tile_n)
