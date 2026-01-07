@@ -40,8 +40,15 @@ class HardwareConstraintValidator:
 			if isinstance(op, MatMul):
 				self._annotate_matmul(op)
 
+		# Mark the graph as having valid tiling metadata.
+		graph.attrs["tiling"] = {
+			"validated": True,
+			"tile": {"m": self.tile_m, "n": self.tile_n, "k": self.tile_k},
+		}
+
 	def _annotate_matmul(self, op: MatMul) -> None:
-		assert op.output is not None, "Graph should set op.output when op is added"
+		# This pass only needs input shapes/dtypes; it should not require
+		# `op.output` to be present (e.g., if an op was constructed manually).
 		a, b = op.inputs
 		m, k = a.shape
 		_, n = b.shape

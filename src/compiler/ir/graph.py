@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from .dtypes import DType, float32
-from .op import Add, MatMul, Op, ReLU
+from .op import Add, IRValidationError, MatMul, Op, ReLU
 from .tensor import Tensor, as_shape
 
 
@@ -20,6 +20,8 @@ class Graph:
 	name: str = "graph"
 	ops: list[Op] = field(default_factory=list)
 	tensors: list[Tensor] = field(default_factory=list)
+	# Passes can write analysis/validation metadata here (e.g., tiling results).
+	attrs: dict[str, object] = field(default_factory=dict)
 	_name_counters: dict[str, int] = field(default_factory=dict)
 
 	def _fresh_name(self, prefix: str) -> str:
@@ -40,9 +42,24 @@ class Graph:
 
 	def _add_op(self, op: Op, *, output_name: str | None = None) -> Tensor:
 		for t in op.inputs:
+			if t.graph is not self:
+				raise IRValidationError(
+					"Cannot add op with inputs from a different graph. "
+					f"graph={self.name!r} op={op.kind}({op.name}) input={t.name} belongs_to={t.graph.name!r}"
+				)
+
+		for t in op.inputs:
 			t.add_user(op)
 
-		out_shape, out_dtype = op.infer_output()
+		try:
+			out_shape, out_dtype = op.infer_output()
+		except Exception as e:  # noqa: BLE001
+			inputs = ", ".join(f"{t.name}:shape={t.shape},dtype={t.dtype}" for t in op.inputs)
+			raise IRValidationError(
+				"Shape inference failed while adding op to graph. "
+				f"graph={self.name!r} op={op.kind}({op.name}) inputs=[{inputs}]. "
+				f"Original error: {e}"
+			) from e
 		out = self._new_tensor(name=output_name, shape=out_shape, dtype=out_dtype)
 		out.producer = op
 		op.output = out

@@ -9,6 +9,8 @@ def test_tiling_no_padding_128() -> None:
 	_ = g.matmul(a, b, name="mm")
 
 	HardwareConstraintValidator().run(g)
+	assert g.attrs["tiling"]["validated"] is True
+	assert g.attrs["tiling"]["tile"] == {"m": 32, "n": 32, "k": 32}
 
 	mm = g.ops[0]
 	info = mm.attrs["matmul"]
@@ -24,6 +26,7 @@ def test_tiling_padding_is_computed() -> None:
 	_ = g.matmul(a, b, name="mm")
 
 	HardwareConstraintValidator().run(g)
+	assert g.attrs["tiling"]["validated"] is True
 
 	mm = g.ops[0]
 	info = mm.attrs["matmul"]

@@ -15,7 +15,12 @@ class IRValidationError(ValueError):
 
 @dataclass(slots=True)
 class Op:
-	"""Base class for IR operations."""
+	"""Base class for IR operations.
+
+	Note: `output` may be `None` for ops constructed manually. When an op is
+	created through `Graph` (e.g. `Graph.matmul(...)`), the graph is responsible
+	for creating the output tensor and assigning `op.output`.
+	"""
 
 	name: str
 	inputs: list[Tensor]
