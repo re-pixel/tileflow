@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from compiler.ir.graph import Graph
-from compiler.ir.op import MatMul, Op
+from compiler.ir.op import FusedMatMulReLU, MatMul, Op
 
 
 def _ceil_div(a: int, b: int) -> int:
@@ -37,7 +37,7 @@ class HardwareConstraintValidator:
 
 	def run(self, graph: Graph) -> None:
 		for op in graph.ops:
-			if isinstance(op, MatMul):
+			if isinstance(op, (MatMul, FusedMatMulReLU)):
 				self._annotate_matmul(op)
 
 		# Mark the graph as having valid tiling metadata.
@@ -80,7 +80,7 @@ class HardwareConstraintValidator:
 
 	@staticmethod
 	def describe_op(op: Op) -> str:
-		if not isinstance(op, MatMul):
+		if not isinstance(op, (MatMul, FusedMatMulReLU)):
 			return f"{op.kind}({op.name})"
 		info = op.attrs.get("matmul")
 		tile = op.attrs.get("tile")

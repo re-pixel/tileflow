@@ -1,6 +1,6 @@
 from .dtypes import DType, float32
 from .graph import Graph
-from .op import Add, MatMul, Op, ReLU
+from .op import Add, FusedMatMulReLU, MatMul, Op, ReLU
 from .tensor import Tensor
 
 __all__ = [
@@ -10,6 +10,7 @@ __all__ = [
     "Tensor",
     "Op",
     "MatMul",
+    "FusedMatMulReLU",
     "Add",
     "ReLU",
 ]

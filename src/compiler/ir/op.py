@@ -80,3 +80,9 @@ class ReLU(Op):
 			raise IRValidationError("ReLU expects exactly 1 input")
 		x = self.inputs[0]
 		return x.shape, x.dtype
+
+
+@dataclass(slots=True)
+class FusedMatMulReLU(MatMul):
+	"""Fused MatMul + ReLU: (M,K) @ (K,N) -> (M,N) followed by ReLU."""
+	pass
