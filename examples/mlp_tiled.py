@@ -15,7 +15,7 @@ from compiler.passes.tiling import TilingPass  # noqa: E402
 def build_3layer_mlp(hidden: int = 128) -> Graph:
     """Build a tiny 3-layer MLP graph (MatMul + ReLU repeated).
 
-    Shapes are chosen so a 128x128 MatMul appears (the Week 1 deliverable).
+    Shapes are chosen so a 128x128 MatMul appears.
     """
 
     g = Graph(name="mlp_3layer")

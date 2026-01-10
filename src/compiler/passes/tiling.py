@@ -23,12 +23,9 @@ def _pad_to_multiple(x: int, multiple: int) -> tuple[int, int]:
 class HardwareConstraintValidator:
 	"""Annotate ops with hardware-aware tiling + padding metadata.
 
-	In Week 1, this pass does not rewrite the graph. It only computes what would
-	be required to run on a fixed 32x32 tile accelerator.
-
-	Why metadata instead of rewriting?
-	- It keeps the IR simple while you're still learning the whole pipeline.
-	- Week 2 lowering can consume these attrs to emit 32x32 micro-ops.
+	Calculates padding and tile counts required to run on a fixed 32x32 tile accelerator.
+	This pass attaches validation metadata without rewriting the graph structure.
+	Lowering passes consume these attributes to generate micro-ops.
 	"""
 
 	tile_m: int = 32
@@ -72,7 +69,7 @@ class HardwareConstraintValidator:
 			"k_padded": k_pad,
 			"pad": {"m": dm, "n": dn, "k": dk},
 			"tiles": {"m": tm, "n": tn, "k": tk},
-			# In the deliverable example we count output tiles.
+			# Total count of output tiles.
 			"output_tile_ops": tm * tn,
 			# This is the full compute tile count if you unroll the K loop.
 			"mac_tile_ops": tm * tn * tk,

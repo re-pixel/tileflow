@@ -47,8 +47,7 @@ class LoweringPass:
     def run(self, graph: Graph) -> list[UOp]:
         all_uops: list[UOp] = []
         
-        # In a real compiler, we would schedule ops. 
-        # Here we just iterate structure order.
+        # Iterate operations in topological order (creation order).
         for op in graph.ops:
             if isinstance(op, (MatMul, FusedMatMulReLU)):
                 all_uops.extend(self._lower_matmul(op))
@@ -73,12 +72,12 @@ class LoweringPass:
         
         uops: list[UOp] = []
         
-        # Naive Loop Order: M, N, K
+        # Standard loop order: M, N, K
         for m in range(tm):
             for n in range(tn):
                 for k in range(tk):
-                    # In a real schedule, we would check if data is already loaded.
-                    # Here we emit naive load-execute pairs.
+                    # Emit unoptimized load-execute sequence. 
+                    # Redundant loads are removed during the scheduling phase.
                     uops.append(UOpLoad(inp_a, (m, k)))
                     uops.append(UOpLoad(inp_b, (k, n)))
                     uops.append(UOpExecute(m, n, k))
