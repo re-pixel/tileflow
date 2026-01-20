@@ -116,9 +116,6 @@ class Scheduler:
         # Precompute liveness
         remaining_uses_operands, remaining_uses_accumulators = self._compute_liveness(uops)
         
-        # Precompute output tensor names for each (m,n) accumulator by scanning STOREs
-        acc_tensor_map = self._build_acc_tensor_map(uops)
-        
         # Residency tracking
         resident: dict[TileKey, int] = {}  # TileKey -> SRAM address
         accumulator_keys: set[TileKey] = set()  # Track which keys are accumulators
@@ -303,19 +300,6 @@ class Scheduler:
             prev_was_store = isinstance(uop, UOpStore)
         
         return boundaries
-    
-    def _build_acc_tensor_map(
-        self, uops: Sequence["UOp"]
-    ) -> dict[tuple[int, int], str]:
-        """Build a map from (m,n) coordinates to output tensor names."""
-        from compiler.passes.lowering import UOpStore
-        
-        acc_map: dict[tuple[int, int], str] = {}
-        for uop in uops:
-            if isinstance(uop, UOpStore):
-                coord = (uop.coord[0], uop.coord[1])
-                acc_map[coord] = uop.tensor
-        return acc_map
     
     def _compute_liveness(
         self, uops: Sequence["UOp"]
