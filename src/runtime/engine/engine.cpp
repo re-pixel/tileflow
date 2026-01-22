@@ -89,7 +89,8 @@ void Engine::dispatch(const SchedExecute& op) {
     }
 
     // Execute tile matmul-accumulate: C += A @ B
-    matmul_tile_ref(C, A, B);
+    // Uses dispatched kernel (AVX2 if available, otherwise reference)
+    matmul_tile(C, A, B);
 
     stats_.executes++;
 }

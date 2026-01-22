@@ -10,6 +10,7 @@
 #include "mini_runtime/engine.hpp"
 #include "mini_runtime/schedule.hpp"
 #include "mini_runtime/constants.hpp"
+#include "mini_runtime/kernels.hpp"
 
 namespace py = pybind11;
 using namespace mini_runtime;
@@ -170,4 +171,93 @@ PYBIND11_MODULE(mini_runtime, m) {
         
         .def_property_readonly("sram_bytes", &Engine::sram_bytes,
                                "Get SRAM size in bytes");
+
+    // ========================================================================
+    // Kernel implementation enum (for explicit benchmarking)
+    // ========================================================================
+    py::enum_<KernelImpl>(m, "KernelImpl")
+        .value("Reference", KernelImpl::Reference, "Naive triple-nested loop")
+        .value("AVX2", KernelImpl::AVX2, "AVX2+FMA optimized kernel");
+
+    // ========================================================================
+    // Kernel utility functions
+    // ========================================================================
+    m.def("is_avx2_available", &is_avx2_available,
+          "Check if AVX2+FMA kernels are available (compile-time detection)");
+    
+    m.def("get_active_kernel_name", &get_active_kernel_name,
+          "Get the name of the currently active kernel implementation");
+
+    // ========================================================================
+    // Direct kernel calls (for isolated benchmarking)
+    // ========================================================================
+    m.def("matmul_tile_bench",
+          [](py::array_t<float, py::array::c_style> C,
+             py::array_t<float, py::array::c_style> A,
+             py::array_t<float, py::array::c_style> B,
+             KernelImpl impl) {
+              auto c_buf = C.request();
+              auto a_buf = A.request();
+              auto b_buf = B.request();
+              
+              if (c_buf.ndim != 2 || a_buf.ndim != 2 || b_buf.ndim != 2) {
+                  throw std::invalid_argument("All arrays must be 2D");
+              }
+              if (c_buf.shape[0] != TILE_DIM || c_buf.shape[1] != TILE_DIM ||
+                  a_buf.shape[0] != TILE_DIM || a_buf.shape[1] != TILE_DIM ||
+                  b_buf.shape[0] != TILE_DIM || b_buf.shape[1] != TILE_DIM) {
+                  throw std::invalid_argument("All arrays must be 32x32");
+              }
+              
+              matmul_tile(
+                  static_cast<float*>(c_buf.ptr),
+                  static_cast<const float*>(a_buf.ptr),
+                  static_cast<const float*>(b_buf.ptr),
+                  impl
+              );
+          },
+          py::arg("C"), py::arg("A"), py::arg("B"), py::arg("impl"),
+          "Execute 32x32 matmul with explicit implementation selection");
+
+    m.def("matmul_tile_bench",
+          [](py::array_t<float, py::array::c_style> C,
+             py::array_t<float, py::array::c_style> A,
+             py::array_t<float, py::array::c_style> B) {
+              auto c_buf = C.request();
+              auto a_buf = A.request();
+              auto b_buf = B.request();
+              
+              if (c_buf.ndim != 2 || a_buf.ndim != 2 || b_buf.ndim != 2) {
+                  throw std::invalid_argument("All arrays must be 2D");
+              }
+              if (c_buf.shape[0] != TILE_DIM || c_buf.shape[1] != TILE_DIM ||
+                  a_buf.shape[0] != TILE_DIM || a_buf.shape[1] != TILE_DIM ||
+                  b_buf.shape[0] != TILE_DIM || b_buf.shape[1] != TILE_DIM) {
+                  throw std::invalid_argument("All arrays must be 32x32");
+              }
+              
+              matmul_tile(
+                  static_cast<float*>(c_buf.ptr),
+                  static_cast<const float*>(a_buf.ptr),
+                  static_cast<const float*>(b_buf.ptr)
+              );
+          },
+          py::arg("C"), py::arg("A"), py::arg("B"),
+          "Execute 32x32 matmul with auto-dispatched implementation");
+
+    m.def("relu_tile_bench",
+          [](py::array_t<float, py::array::c_style> C, KernelImpl impl) {
+              auto c_buf = C.request();
+              
+              if (c_buf.ndim != 2) {
+                  throw std::invalid_argument("Array must be 2D");
+              }
+              if (c_buf.shape[0] != TILE_DIM || c_buf.shape[1] != TILE_DIM) {
+                  throw std::invalid_argument("Array must be 32x32");
+              }
+              
+              relu_tile(static_cast<float*>(c_buf.ptr), impl);
+          },
+          py::arg("C"), py::arg("impl"),
+          "Execute 32x32 ReLU with explicit implementation selection");
 }
