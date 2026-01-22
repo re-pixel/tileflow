@@ -48,8 +48,8 @@ For a modern x86 CPU with AVX2 and FMA support:
 | FLOPs per FMA | 2 | One multiply + one add |
 | FLOPs per cycle | $2 \times 8 \times 2 = 32$ | Per core |
 
-**Peak compute at 3.5 GHz:**
-$$\pi = 3.5 \times 10^9 \times 32 = 112 \text{ GFLOP/s (single core)}$$
+**Peak compute at 4.5 GHz:**
+$$\pi = 4.5 \times 10^9 \times 32 = 144 \text{ GFLOP/s (single core)}$$
 
 In practice, ~50-70% of theoretical peak is achievable due to:
 - Instruction latency and dependencies
@@ -153,7 +153,7 @@ Processing the full 32×32 tile:
 
 **Theoretical minimum cycles:** 2,048 / 2 = 1,024 (2 FMA units)
 
-At 3.5 GHz: $1{,}024 / 3.5 \times 10^9 \approx 0.29 \mu s$ per tile
+At 4.5 GHz: $1{,}024 / 4.5 \times 10^9 \approx 0.23 \mu s$ per tile
 
 **Realistic expectation:** 0.5-1.0 µs per tile (accounting for overhead)
 
@@ -165,7 +165,7 @@ At 3.5 GHz: $1{,}024 / 3.5 \times 10^9 \approx 0.29 \mu s$ per tile
 
 The reference kernel uses scalar operations:
 - 1 FLOP per cycle (no vectorization)
-- Expected: ~3.5 GFLOP/s at 3.5 GHz
+- Expected: ~4.5 GFLOP/s at 4.5 GHz
 
 ### 5.2 AVX2 Kernel
 
@@ -173,11 +173,11 @@ With the 6×16 micro-kernel design:
 - 16 FLOPs per FMA instruction
 - 2 FMA instructions per cycle (dual FMA units)
 - Expected: **30-50 GFLOP/s** (realistic)
-- Theoretical max: 112 GFLOP/s
+- Theoretical max: 144 GFLOP/s
 
 ### 5.3 Speedup
 
-$$\text{Speedup} = \frac{\text{AVX2 throughput}}{\text{Reference throughput}} \approx \frac{40}{3.5} \approx 10\times$$
+$$\text{Speedup} = \frac{\text{AVX2 throughput}}{\text{Reference throughput}} \approx \frac{40}{4.5} \approx 9\times$$
 
 Realistic range: **4-10× speedup** depending on:
 - CPU model and microarchitecture

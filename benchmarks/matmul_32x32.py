@@ -41,8 +41,9 @@ WARMUP_ITERS = 100
 BENCH_ITERS = 1000
 
 # Theoretical peak calculation (adjust for your CPU)
-# Example: 3.5 GHz, 2 FMA units, 8 floats/vector, 2 FLOPs/FMA
-CPU_FREQ_GHZ = 3.5
+# Configured for AMD Ryzen 7 7730U (Zen 3)
+# Max Boost: 4.5 GHz, 2 FMA units (256-bit), 8 floats/vector, 2 FLOPs/FMA
+CPU_FREQ_GHZ = 4.5
 FMA_UNITS = 2
 FLOATS_PER_VECTOR = 8
 FLOPS_PER_FMA = 2
