@@ -157,7 +157,7 @@ The high arithmetic intensity (4.0 >> 0.16) confirms SIMD optimization is highly
 
 CPU: AMD Ryzen 7 7730U with Radeon Graphics
 Current frequency: 1996 MHz
-Theoretical peak: 144.0 GFLOP/s (assuming 4.5 GHz, 2 FMA units)
+Theoretical peak: 64.0 GFLOP/s (assuming 2.0 GHz, 2 FMA units)
 
 Active kernel: AVX2+FMA
 AVX2 available: True

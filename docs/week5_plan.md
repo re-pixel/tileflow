@@ -30,7 +30,7 @@ The Week 4 reference kernel executes:
 - $32 \times 32 \times 32 = 32{,}768$ multiply-accumulate operations per tile
 - Each operation is 2 FLOPs (multiply + add) → **65,536 FLOPs per tile**
 
-With scalar code, each FLOP requires one CPU cycle. A 4.5 GHz CPU achieves ~4.5 GFLOP/s scalar.
+With scalar code, each FLOP requires one CPU cycle. A 2.0 GHz CPU achieves ~2.0 GFLOP/s scalar.
 
 ### 2.2 AVX2 Potential
 
@@ -39,7 +39,7 @@ AVX2 provides:
 - **FMA instructions** (`vfmadd231ps`) that compute $a \times b + c$ in one instruction
 - **Two FMA units** on modern CPUs (Haswell+) for 2×16 = 32 FLOPs/cycle
 
-Theoretical peak on a 4.5 GHz CPU: $4.5 \times 10^9 \times 32 = 144$ GFLOP/s.
+Theoretical peak on a 2.0 GHz CPU: $2.0 \times 10^9 \times 32 = 64$ GFLOP/s.
 
 **Realistic target:** 4–8× speedup over reference (limited by register pressure, memory latency, and instruction overhead).
 
@@ -313,12 +313,12 @@ For a typical CPU with:
 ```
 32x32 Matmul Kernel Benchmark
 =============================
-Reference kernel:  0.22 ms/1000 iters →   4.5 GFLOP/s
-AVX2 kernel:       0.02 ms/1000 iters →  45.0 GFLOP/s
-Speedup: 10.0x
+Reference kernel:  1.07 ms/1000 iters →   1.0 GFLOP/s
+AVX2 kernel:       0.06 ms/1000 iters →  16.0 GFLOP/s
+Speedup: 16.0x
 
-Theoretical peak: 144 GFLOP/s (assuming 4.5 GHz, 2 FMA units)
-Efficiency: 31.2%
+Theoretical peak: 64 GFLOP/s (assuming 2.0 GHz, 2 FMA units)
+Efficiency: 25.0%
 ```
 
 ### 6.2 End-to-End MLP Benchmark (`benchmarks/mlp_e2e.py`)
