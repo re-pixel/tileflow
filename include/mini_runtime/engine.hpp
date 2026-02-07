@@ -45,6 +45,12 @@ public:
         uint64_t loads = 0;      ///< Number of LOAD operations executed
         uint64_t executes = 0;   ///< Number of EXEC operations executed
         uint64_t stores = 0;     ///< Number of STORE operations executed
+
+        // Overlap metrics (only populated in threaded mode)
+        uint64_t dma_busy_ns = 0;
+        uint64_t compute_busy_ns = 0;
+        uint64_t overlap_ns = 0;
+        uint64_t total_ns = 0;
     };
 
     /**

@@ -1,16 +1,13 @@
 #!/usr/bin/env python3
-"""Week 6 Demo — Threaded (Pipelined) MLP Execution.
+"""Week 6 Benchmark — Sequential vs. Threaded MLP Execution.
 
-This script demonstrates the Week 6 dual-threaded pipelined engine:
-  - DMA thread handles LOAD/STORE operations
-  - Compute thread handles EXEC operations (matmul kernels)
-  - Both threads run concurrently, overlapping data movement with compute
-
-The script compares sequential vs. threaded execution for correctness
-and measures timing to show overlap benefits.
+Compares the sequential and dual-threaded pipelined engines:
+  - Correctness: bit-identical output verification
+  - Performance: latency per iteration, speedup ratio
+  - Stability: 1000-iteration stress test
 
 Run with:
-    python -m examples.mlp_threaded
+    python -m benchmarks.mlp_threaded
 """
 
 import time
@@ -72,7 +69,7 @@ def benchmark(rt, schedule, n_iters=200):
 
 def main():
     print("=" * 70)
-    print("Week 6 Demo — Threaded (Pipelined) MLP Execution")
+    print("Week 6 Benchmark — Sequential vs. Threaded MLP Execution")
     print("=" * 70)
 
     # -------------------------------------------------------------------------
@@ -166,9 +163,48 @@ def main():
     print(f"    Speedup:    {speedup:.2f}x")
 
     # -------------------------------------------------------------------------
-    # Step 7: Stress test
+    # Step 7: Overlap analysis
     # -------------------------------------------------------------------------
-    print("\n[7] Stress test (1000 threaded iterations)...")
+    print("\n[7] Overlap analysis...")
+
+    # Run once more to get fresh overlap stats
+    rt_thr.reset_stats()
+    rt_thr.execute(schedule)
+    ov = rt_thr.stats
+
+    dma_us = ov.dma_busy_ns / 1000
+    compute_us = ov.compute_busy_ns / 1000
+    overlap_us = ov.overlap_ns / 1000
+    total_us = ov.total_ns / 1000
+
+    overlap_ratio = ov.overlap_ns / ov.total_ns * 100 if ov.total_ns > 0 else 0
+    dma_util = ov.dma_busy_ns / ov.total_ns * 100 if ov.total_ns > 0 else 0
+    compute_util = ov.compute_busy_ns / ov.total_ns * 100 if ov.total_ns > 0 else 0
+    idle_ns = max(0, ov.total_ns - ov.dma_busy_ns - ov.compute_busy_ns + ov.overlap_ns)
+    idle_pct = idle_ns / ov.total_ns * 100 if ov.total_ns > 0 else 0
+
+    print(f"    Wall-clock time:    {total_us:8.1f} us")
+    print(f"    DMA busy time:      {dma_us:8.1f} us  ({dma_util:.1f}% utilization)")
+    print(f"    Compute busy time:  {compute_us:8.1f} us  ({compute_util:.1f}% utilization)")
+    print(f"    Overlap time:       {overlap_us:8.1f} us  ({overlap_ratio:.1f}% of wall-clock)")
+    print(f"    Idle time:          {idle_ns/1000:8.1f} us  ({idle_pct:.1f}% of wall-clock)")
+
+    print()
+    print("    Timeline (conceptual):")
+    # Build a simple ASCII bar chart
+    bar_width = 50
+    if total_us > 0:
+        dma_bar = int(bar_width * dma_util / 100)
+        comp_bar = int(bar_width * compute_util / 100)
+        overlap_bar = int(bar_width * overlap_ratio / 100)
+        print(f"    DMA     [{'#' * dma_bar}{'.' * (bar_width - dma_bar)}] {dma_util:.1f}%")
+        print(f"    Compute [{'#' * comp_bar}{'.' * (bar_width - comp_bar)}] {compute_util:.1f}%")
+        print(f"    Overlap [{'=' * overlap_bar}{'.' * (bar_width - overlap_bar)}] {overlap_ratio:.1f}%")
+
+    # -------------------------------------------------------------------------
+    # Step 8: Stress test
+    # -------------------------------------------------------------------------
+    print("\n[8] Stress test (1000 threaded iterations)...")
     start = time.perf_counter()
     for _ in range(1000):
         rt_thr.reset_stats()
@@ -193,16 +229,26 @@ def main():
     Compute Thread: EXEC operations (matmul kernels)
     Communication:  Lock-free SPSC ring buffers (16-slot depth)
 
-  Results:
+  Performance:
     Sequential:     {seq_ms:.3f} ms/iter
     Threaded:       {thr_ms:.3f} ms/iter
     Speedup:        {speedup:.2f}x
-    Correctness:    {'ALL PASS' if (seq_correct and thr_correct and match and stress_correct) else 'SOME FAILURES'}
-    Stress (1000x): {'PASS' if stress_correct else 'FAIL'}
+
+  Overlap Analysis:
+    DMA utilization:     {dma_util:5.1f}%
+    Compute utilization: {compute_util:5.1f}%
+    Overlap ratio:       {overlap_ratio:5.1f}%  (time both threads active)
+    Idle ratio:          {idle_pct:5.1f}%  (neither thread active)
+
+  Correctness:
+    Sequential vs NumPy: {'PASS' if seq_correct else 'FAIL'}
+    Threaded vs NumPy:   {'PASS' if thr_correct else 'FAIL'}
+    Threaded vs Seq:     {'PASS' if match else 'FAIL'}
+    Stress (1000x):      {'PASS' if stress_correct else 'FAIL'}
 """)
 
     print("=" * 70)
-    print("Week 6 Demo Complete!")
+    print("Week 6 Benchmark Complete!")
     print("=" * 70)
 
     return 0 if (seq_correct and thr_correct and match and stress_correct) else 1

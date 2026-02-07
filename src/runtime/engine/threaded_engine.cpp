@@ -19,6 +19,7 @@
 #include "mini_runtime/kernels.hpp"
 #include "mini_runtime/constants.hpp"
 
+#include <algorithm>
 #include <cassert>
 #include <cstring>
 #include <stdexcept>
@@ -58,6 +59,37 @@ ThreadedEngine::prescan_schedule(const std::vector<SchedOp>& schedule) {
     }
 
     return meta;
+}
+
+// ============================================================================
+// Overlap computation — sweep over two sorted interval lists
+// ============================================================================
+
+uint64_t ThreadedEngine::compute_overlap(const std::vector<Interval>& a,
+                                         const std::vector<Interval>& b) {
+    // Merge-sweep: both lists are sorted by start_ns.
+    // Advance whichever interval ends first, accumulating overlap.
+    uint64_t total = 0;
+    size_t i = 0, j = 0;
+
+    while (i < a.size() && j < b.size()) {
+        // Overlap of [a_start, a_end) and [b_start, b_end)
+        uint64_t start = std::max(a[i].start_ns, b[j].start_ns);
+        uint64_t end   = std::min(a[i].end_ns,   b[j].end_ns);
+
+        if (start < end) {
+            total += (end - start);
+        }
+
+        // Advance the interval that ends first
+        if (a[i].end_ns < b[j].end_ns) {
+            ++i;
+        } else {
+            ++j;
+        }
+    }
+
+    return total;
 }
 
 // ============================================================================
@@ -103,10 +135,21 @@ void ThreadedEngine::execute(const std::vector<SchedOp>& schedule,
 
     // Pre-reserve for in-flight tracking (count EXECs in schedule)
     size_t exec_count = 0;
+    size_t dma_count = 0;
     for (const auto& op : schedule) {
         if (std::holds_alternative<SchedExecute>(op)) exec_count++;
+        else dma_count++;
     }
     in_flight_addrs_.reserve(exec_count);
+
+    // Prepare interval recording
+    dma_intervals_.clear();
+    dma_intervals_.reserve(dma_count);
+    compute_intervals_.clear();
+    compute_intervals_.reserve(exec_count);
+
+    // Set time origin
+    epoch_ = std::chrono::steady_clock::now();
 
     // Pre-scan schedule for is_last_k and store metadata
     auto exec_meta = prescan_schedule(schedule);
@@ -121,6 +164,21 @@ void ThreadedEngine::execute(const std::vector<SchedOp>& schedule,
 
     // Wait for compute thread to finish
     compute.join();
+
+    // Compute overlap metrics
+    uint64_t end_ns = now_ns();
+    stats.total_ns = end_ns;
+
+    stats.dma_busy_ns = 0;
+    for (const auto& iv : dma_intervals_) {
+        stats.dma_busy_ns += (iv.end_ns - iv.start_ns);
+    }
+    stats.compute_busy_ns = 0;
+    for (const auto& iv : compute_intervals_) {
+        stats.compute_busy_ns += (iv.end_ns - iv.start_ns);
+    }
+
+    stats.overlap_ns = compute_overlap(dma_intervals_, compute_intervals_);
 }
 
 // ============================================================================
@@ -141,6 +199,8 @@ void ThreadedEngine::dma_thread_func(const std::vector<SchedOp>& schedule,
             // Ensure no in-flight EXEC is reading from this address
             wait_addr_safe(load->dst_addr);
 
+            uint64_t t0 = now_ns();
+
             sram.validate_range(load->dst_addr, load->bytes);
 
             const float* src = tensors.tile_ptr(
@@ -154,6 +214,7 @@ void ThreadedEngine::dma_thread_func(const std::vector<SchedOp>& schedule,
                             TILE_DIM * sizeof(float));
             }
 
+            dma_intervals_.push_back({t0, now_ns()});
             stats.loads++;
 
         } else if (auto* exec = std::get_if<SchedExecute>(&op)) {
@@ -190,6 +251,8 @@ void ThreadedEngine::dma_thread_func(const std::vector<SchedOp>& schedule,
 #endif
             }
 
+            uint64_t t0 = now_ns();
+
             // Apply activation if needed
             float* src = sram.ptr(notif.acc_addr);
             if (notif.apply_relu) {
@@ -207,6 +270,7 @@ void ThreadedEngine::dma_thread_func(const std::vector<SchedOp>& schedule,
                             TILE_DIM * sizeof(float));
             }
 
+            dma_intervals_.push_back({t0, now_ns()});
             stats.stores++;
         }
     }
@@ -224,6 +288,8 @@ void ThreadedEngine::compute_thread_func(SRAMArena& sram, Stats& stats) {
 
     while (true) {
         if (compute_queue_.try_pop(item)) {
+            uint64_t t0 = now_ns();
+
             // Validate SRAM ranges
             sram.validate_range(item.a_addr, TILE_BYTES);
             sram.validate_range(item.b_addr, TILE_BYTES);
@@ -241,6 +307,7 @@ void ThreadedEngine::compute_thread_func(SRAMArena& sram, Stats& stats) {
             // Execute matmul-accumulate: C += A @ B
             matmul_tile(C, A, B);
 
+            compute_intervals_.push_back({t0, now_ns()});
             stats.executes++;
 
             // Mark this item as completed (releases operand addresses)

@@ -25,8 +25,10 @@
 #pragma once
 
 #include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <thread>
+#include <utility>
 #include <vector>
 
 #include "mini_runtime/arena.hpp"
@@ -46,6 +48,15 @@ public:
     /// Ring buffer depth for inter-thread queues (power of 2)
     static constexpr size_t QUEUE_DEPTH = 16;
 
+    /// Nanosecond timestamp type
+    using TimePoint = std::chrono::steady_clock::time_point;
+
+    /// A [start, end) time interval in nanoseconds relative to epoch
+    struct Interval {
+        uint64_t start_ns;
+        uint64_t end_ns;
+    };
+
     /**
      * @struct Stats
      * @brief Execution statistics for the threaded engine.
@@ -54,6 +65,25 @@ public:
         uint64_t loads = 0;
         uint64_t executes = 0;
         uint64_t stores = 0;
+
+        // --- Overlap metrics (populated after execute completes) ---
+        uint64_t dma_busy_ns = 0;      ///< Total ns DMA thread spent on LOAD/STORE
+        uint64_t compute_busy_ns = 0;  ///< Total ns Compute thread spent on EXEC
+        uint64_t overlap_ns = 0;       ///< Total ns both threads were busy simultaneously
+        uint64_t total_ns = 0;         ///< Wall-clock ns for the entire execution
+
+        /// Fraction of time both threads were active (0.0 - 1.0)
+        double overlap_ratio() const {
+            return total_ns > 0 ? static_cast<double>(overlap_ns) / total_ns : 0.0;
+        }
+        /// Fraction of time DMA thread was busy
+        double dma_utilization() const {
+            return total_ns > 0 ? static_cast<double>(dma_busy_ns) / total_ns : 0.0;
+        }
+        /// Fraction of time Compute thread was busy
+        double compute_utilization() const {
+            return total_ns > 0 ? static_cast<double>(compute_busy_ns) / total_ns : 0.0;
+        }
     };
 
     /**
@@ -122,6 +152,31 @@ private:
 
     /// Number of EXECs pushed so far (DMA thread only).
     uint64_t items_pushed_{0};
+
+    /// Time origin for this execution (set at start of execute())
+    TimePoint epoch_;
+
+    /// Recorded intervals (thread-local during execution, read after join)
+    std::vector<Interval> dma_intervals_;
+    std::vector<Interval> compute_intervals_;
+
+    /// Get nanoseconds since epoch_
+    uint64_t now_ns() const {
+        return static_cast<uint64_t>(
+            std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::steady_clock::now() - epoch_).count());
+    }
+
+    /**
+     * @brief Compute total overlap between two sorted interval lists.
+     *
+     * Both lists must be sorted by start_ns (which they naturally are
+     * since each thread records intervals sequentially).
+     *
+     * @return Total nanoseconds of overlap.
+     */
+    static uint64_t compute_overlap(const std::vector<Interval>& a,
+                                    const std::vector<Interval>& b);
 };
 
 }  // namespace mini_runtime

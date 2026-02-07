@@ -227,14 +227,14 @@ rt = Runtime(sram_bytes=256 * 1024, threaded=True)
 | **Python wrapper update** | ✅ Complete | `src/compiler/runtime.py` |
 | **Ring buffer tests (C++)** | ✅ Complete (9 tests) | `tests/test_ring_buffer.cpp` |
 | **Threaded runtime tests** | ✅ Complete (10 tests) | `tests/test_threaded_runtime.py` |
-| **Demo script** | ✅ Complete | `examples/mlp_threaded.py` |
+| **Benchmark script** | ✅ Complete | `benchmarks/mlp_threaded.py` |
 | **Build system updates** | ✅ Complete | `CMakeLists.txt`, `setup.py` |
 
 ---
 
 ## 4) Example Output
 
-### 4.1 Threaded MLP Demo (`python3 -m examples.mlp_threaded`)
+### 4.1 Threaded MLP Benchmark (`python3 -m benchmarks.mlp_threaded`)
 
 ```text
 ======================================================================
@@ -411,8 +411,8 @@ tests/
 ├── test_ring_buffer.cpp      # 9 C++ unit tests (incl. multi-threaded stress)
 └── test_threaded_runtime.py  # 10 Python tests (correctness + stress + benchmark)
 
-examples/
-└── mlp_threaded.py           # Demo: sequential vs threaded comparison
+benchmarks/
+└── mlp_threaded.py           # Benchmark: sequential vs threaded comparison
 
 docs/
 └── week6_report.md           # This report
