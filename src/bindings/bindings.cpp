@@ -29,7 +29,9 @@ PYBIND11_MODULE(mini_runtime, m) {
         .def_readwrite("sram_bytes", &Engine::Config::sram_bytes,
                        "Size of simulated SRAM in bytes (default: 256 KiB)")
         .def_readwrite("trace", &Engine::Config::trace,
-                       "Enable execution tracing (default: false)");
+                       "Enable execution tracing (default: false)")
+        .def_readwrite("threaded", &Engine::Config::threaded,
+                       "Enable dual-thread pipelined execution (default: false)");
 
     // Engine statistics
     py::class_<Engine::Stats>(m, "EngineStats")

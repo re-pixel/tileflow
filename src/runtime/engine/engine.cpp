@@ -36,11 +36,20 @@ void Engine::execute(const std::vector<SchedOp>& schedule) {
     // Clear SRAM before execution (accumulators start at zero)
     sram_.clear();
 
-    // Dispatch each operation in sequence
-    for (const auto& op : schedule) {
-        std::visit([this](const auto& typed_op) {
-            this->dispatch(typed_op);
-        }, op);
+    if (config_.threaded) {
+        // Dual-threaded pipelined execution: DMA + Compute overlap
+        ThreadedEngine::Stats tstats{};
+        threaded_engine_.execute(schedule, sram_, tensors_, tstats);
+        stats_.loads    += tstats.loads;
+        stats_.executes += tstats.executes;
+        stats_.stores   += tstats.stores;
+    } else {
+        // Sequential execution (original behavior)
+        for (const auto& op : schedule) {
+            std::visit([this](const auto& typed_op) {
+                this->dispatch(typed_op);
+            }, op);
+        }
     }
 }
 

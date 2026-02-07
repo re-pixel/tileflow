@@ -47,17 +47,21 @@ class Runtime:
         >>> result = rt.get_tensor("C", (32, 32))
     """
     
-    def __init__(self, sram_bytes: int = 256 * 1024) -> None:
+    def __init__(self, sram_bytes: int = 256 * 1024, *, threaded: bool = False) -> None:
         """Create a runtime with the specified SRAM size.
         
         Args:
             sram_bytes: Size of simulated SRAM in bytes. Default 256 KiB.
+            threaded: Enable dual-thread pipelined execution.
+                      When True, LOADs overlap with EXECs for higher utilization.
         """
         config = _rt.EngineConfig()
         config.sram_bytes = sram_bytes
+        config.threaded = threaded
         self._engine = _rt.Engine(config)
         self._tensor_ids: dict[str, int] = {}
         self._tensor_shapes: dict[str, tuple[int, int]] = {}
+        self._threaded = threaded
     
     def register_tensor(self, name: str, shape: tuple[int, int]) -> int:
         """Register a tensor for use in execution.
