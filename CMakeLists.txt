@@ -49,6 +49,7 @@ add_library(mini_runtime_core STATIC
     src/runtime/memory/arena.cpp
     src/runtime/memory/tensors.cpp
     src/runtime/engine/engine.cpp
+    src/runtime/engine/threaded_engine.cpp
     ${KERNEL_SOURCES}
 )
 
@@ -75,6 +76,10 @@ pybind11_add_module(mini_runtime
 )
 
 target_link_libraries(mini_runtime PRIVATE mini_runtime_core)
+
+# Link pthreads for threading support
+find_package(Threads REQUIRED)
+target_link_libraries(mini_runtime_core PUBLIC Threads::Threads)
 
 # Add AVX2 flags to the pybind11 module if available
 if(HAS_AVX2_FMA)

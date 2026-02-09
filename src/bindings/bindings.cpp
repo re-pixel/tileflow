@@ -29,7 +29,9 @@ PYBIND11_MODULE(mini_runtime, m) {
         .def_readwrite("sram_bytes", &Engine::Config::sram_bytes,
                        "Size of simulated SRAM in bytes (default: 256 KiB)")
         .def_readwrite("trace", &Engine::Config::trace,
-                       "Enable execution tracing (default: false)");
+                       "Enable execution tracing (default: false)")
+        .def_readwrite("threaded", &Engine::Config::threaded,
+                       "Enable dual-thread pipelined execution (default: false)");
 
     // Engine statistics
     py::class_<Engine::Stats>(m, "EngineStats")
@@ -39,6 +41,14 @@ PYBIND11_MODULE(mini_runtime, m) {
                       "Number of EXEC operations executed")
         .def_readonly("stores", &Engine::Stats::stores,
                       "Number of STORE operations executed")
+        .def_readonly("dma_busy_ns", &Engine::Stats::dma_busy_ns,
+                      "Nanoseconds DMA thread spent on LOAD/STORE (threaded mode)")
+        .def_readonly("compute_busy_ns", &Engine::Stats::compute_busy_ns,
+                      "Nanoseconds Compute thread spent on EXEC (threaded mode)")
+        .def_readonly("overlap_ns", &Engine::Stats::overlap_ns,
+                      "Nanoseconds both threads were busy simultaneously")
+        .def_readonly("total_ns", &Engine::Stats::total_ns,
+                      "Total wall-clock nanoseconds for execution (threaded mode)")
         .def("__repr__", [](const Engine::Stats& s) {
             return "EngineStats(loads=" + std::to_string(s.loads) +
                    ", executes=" + std::to_string(s.executes) +

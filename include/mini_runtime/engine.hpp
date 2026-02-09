@@ -17,6 +17,7 @@
 #include "mini_runtime/arena.hpp"
 #include "mini_runtime/schedule.hpp"
 #include "mini_runtime/tensors.hpp"
+#include "mini_runtime/threaded_engine.hpp"
 
 namespace mini_runtime {
 
@@ -33,6 +34,7 @@ public:
     struct Config {
         size_t sram_bytes = 256 * 1024;  ///< SRAM size (default 256 KiB)
         bool   trace = false;             ///< Enable execution tracing
+        bool   threaded = false;          ///< Enable dual-thread pipelined execution
     };
 
     /**
@@ -43,6 +45,12 @@ public:
         uint64_t loads = 0;      ///< Number of LOAD operations executed
         uint64_t executes = 0;   ///< Number of EXEC operations executed
         uint64_t stores = 0;     ///< Number of STORE operations executed
+
+        // Overlap metrics (only populated in threaded mode)
+        uint64_t dma_busy_ns = 0;
+        uint64_t compute_busy_ns = 0;
+        uint64_t overlap_ns = 0;
+        uint64_t total_ns = 0;
     };
 
     /**
@@ -114,6 +122,7 @@ private:
     SRAMArena sram_;
     TensorStorage tensors_;
     Stats stats_;
+    ThreadedEngine threaded_engine_;  ///< Dual-thread engine (used when config_.threaded)
 
     void dispatch(const SchedLoad& op);
     void dispatch(const SchedExecute& op);

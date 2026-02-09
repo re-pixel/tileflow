@@ -31,6 +31,7 @@ try:
     sources = [
         "src/bindings/bindings.cpp",
         "src/runtime/engine/engine.cpp",
+        "src/runtime/engine/threaded_engine.cpp",
         "src/runtime/memory/arena.cpp",
         "src/runtime/memory/tensors.cpp",
         "src/runtime/kernels/matmul_ref.cpp",
@@ -54,7 +55,8 @@ try:
             sources=sources,
             include_dirs=["include"],
             cxx_std=17,
-            extra_compile_args=extra_compile_args,
+            extra_compile_args=extra_compile_args + ["-pthread"],
+            extra_link_args=["-pthread"],
         ),
     ]
     cmdclass = {"build_ext": build_ext}
